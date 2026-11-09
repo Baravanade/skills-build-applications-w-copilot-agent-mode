@@ -81,6 +81,7 @@ describe('OctoFit API contract', () => {
   it('suggests workouts that match each user activity pattern', async () => {
     const mona = await createUserAndTeam('Mona', 'mona@example.com', 'Mona', 'Octocats');
     const hubot = await createUserAndTeam('Hubot', 'hubot@example.com', 'Hubot', 'Robocats');
+    await User.updateOne({ _id: mona.user._id }, { $set: { fitnessGoal: 'strength' } });
     await User.updateOne({ _id: hubot.user._id }, { $set: { fitnessGoal: 'strength' } });
     await Activity.create([
       { user: mona.user._id, team: mona.team._id, type: 'run', minutes: 40, points: 40, occurredAt: new Date() },
@@ -102,5 +103,20 @@ describe('OctoFit API contract', () => {
     const unknownResponse = await request(app).get('/api/workouts/suggestions/nobody%40example.com');
     expect(unknownResponse.status).toBeGreaterThanOrEqual(400);
     expect(unknownResponse.status).toBeLessThan(500);
+  });
+  it('uses the fitness goal for workout suggestions without activity history', async () => {
+    await createUserAndTeam('Mona', 'mona@example.com', 'Mona');
+    await Workout.create([
+      { title: 'Intervals', focus: 'endurance', minutes: 30, difficulty: 'moderate' },
+      { title: 'Strength Circuit', focus: 'strength', minutes: 30, difficulty: 'moderate' },
+    ]);
+    const response = await request(app).get('/api/workouts/suggestions/mona%40example.com');
+    expect(response.status).toBe(200);
+    expect(response.body.suggestions).toHaveLength(1);
+    expect(response.body.suggestions[0]).toMatchObject({
+      title: 'Intervals',
+      focus: 'endurance',
+      reason: expect.stringMatching(/endurance.*goal/i),
+    });
   });
 });
