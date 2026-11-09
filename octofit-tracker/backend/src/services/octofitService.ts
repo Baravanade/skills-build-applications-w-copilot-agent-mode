@@ -46,7 +46,7 @@ export async function createTeam(input: unknown) {
   const team = new Team({
     name: 'name' in input ? input.name : undefined,
     mascot: 'mascot' in input ? input.mascot : undefined,
-    members: 'members' in input ? input.members : undefined,
+    members: 'members' in input ? (input.members ?? []) : undefined,
   });
   const error = team.validateSync();
   if (error) {
