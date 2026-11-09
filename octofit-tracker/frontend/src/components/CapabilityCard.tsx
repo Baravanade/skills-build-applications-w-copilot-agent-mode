@@ -1,11 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { getJson } from '../api/client.js';
 
 type Props<T> = {
   title: string;
   description: string;
-  path: string;
-  collection: string;
+  load: () => Promise<T[]>;
   emptyText: string;
   renderItem: (item: T) => ReactNode;
 };
@@ -15,20 +13,20 @@ type RequestState<T> =
   | { status: 'error' }
   | { status: 'success'; items: T[] };
 
-export function CapabilityCard<T>({ title, description, path, collection, emptyText, renderItem }: Props<T>) {
+export function CapabilityCard<T>({ title, description, load, emptyText, renderItem }: Props<T>) {
   const [state, setState] = useState<RequestState<T>>({ status: 'loading' });
 
   useEffect(() => {
     let active = true;
     setState({ status: 'loading' });
-    getJson<Record<string, T[]>>(path).then((response) => {
-      if (!Array.isArray(response?.[collection])) throw new Error('Invalid API response');
-      if (active) setState({ status: 'success', items: response[collection] });
+    load().then((items) => {
+      if (!Array.isArray(items)) throw new Error('Invalid API response');
+      if (active) setState({ status: 'success', items });
     }).catch(() => {
       if (active) setState({ status: 'error' });
     });
     return () => { active = false; };
-  }, [path, collection]);
+  }, [load]);
 
   return <section className="card h-100"><div className="card-body">
     <h2 className="h4">{title}</h2>
